@@ -1,7 +1,7 @@
 from datetime import datetime
-from select import select
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import MOSCOW_TZ

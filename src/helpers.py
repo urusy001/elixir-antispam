@@ -46,6 +46,8 @@ async def CHAT_ADMIN_FILTER(message: Message, bot: Bot) -> bool:
         return member.status in ("administrator", "creator")
 
     return False
+
+
 async def CHAT_NOT_BANNED_FILTER(user_id: int) -> bool:
     from src.bot.main import bot
     try:
