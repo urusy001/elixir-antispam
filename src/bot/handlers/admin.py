@@ -228,7 +228,7 @@ async def handle_private(message: Message):
         largest_photo = message.photo[-1]
         file = await message.bot.get_file(largest_photo.file_id)
         image_bytes = await message.bot.download_file(file.file_path)
-        ocr_text = await asyncio.to_thread(extract_text_from_image(), image_bytes)
+        ocr_text = await asyncio.to_thread(extract_text_from_image, image_bytes)
         print(ocr_text)
         if ocr_text and ocr_text.strip(): text += '\n'+ocr_text.strip()
 
