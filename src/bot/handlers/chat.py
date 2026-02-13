@@ -400,11 +400,8 @@ async def handle_poll_answer(answer: PollAnswer, bot: Bot):
 @router.message(CHAT_USER_FILTER, lambda message: getattr(message, "message_thread_id", None) is None)
 async def handle_chat_message(message: Message):
     text_parts: list[str] = []
-
     if message.text and message.text.strip(): text_parts.append(message.text.strip())
-
     if message.caption and message.caption.strip(): text_parts.append(message.caption.strip())
-
     if message.photo:
         largest_photo = message.photo[-1]
         file = await message.bot.get_file(largest_photo.file_id)
@@ -415,16 +412,13 @@ async def handle_chat_message(message: Message):
 
     text = "\n".join(text_parts).strip()
     if not text: return None
-
     user = message.from_user
     if not user: return None
-
     now = datetime.now(tz=MOSCOW_TZ)
     whitelist = await CHAT_ADMIN_FILTER(message, message.bot)
-
+    ai_user_risk = 1.0
     async with get_session() as session:
         chat_user = await get_chat_user(session, user.id)
-
         if chat_user is None:
             await upsert_chat_user(
                 session,
@@ -452,6 +446,7 @@ async def handle_chat_message(message: Message):
             )
             chat_user = await get_chat_user(session, user.id)
             passed_poll = True
+            ai_user_risk = 1.05
         else:
             whitelist = whitelist or bool(chat_user.whitelist)
             passed_poll = bool(chat_user.passed_poll)
@@ -461,12 +456,23 @@ async def handle_chat_message(message: Message):
                 user.id,
                 ChatUserUpdate(messages_sent=new_messages_sent),
             )
+            reports = chat_user.times_reported or 0
+            mutes = chat_user.times_muted or 0
+            ai_user_risk = 1.0
+            ai_user_risk += min(0.25, reports * 0.08)
+            ai_user_risk += min(0.25, mutes * 0.10)
+            if new_messages_sent <= 3:
+                ai_user_risk += 0.10
+            if new_messages_sent >= 50 and reports == 0 and mutes == 0:
+                ai_user_risk -= 0.10
 
         if chat_user.banned_until and chat_user.banned_until > now + timedelta(days=365 * 10):
             await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
             try: await message.delete()
             except Exception: pass
             return None
+
+    ai_user_risk = min(1.35, max(0.75, ai_user_risk))
 
     if whitelist:
         return await append_message_to_csv(text, 0)
@@ -483,7 +489,7 @@ async def handle_chat_message(message: Message):
         except Exception: pass
         return None
 
-    result, p = await is_spam(text)
+    result, p = await is_spam(text, user_risk=ai_user_risk)
     print(result, p, text)
 
     if result:
