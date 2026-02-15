@@ -15,6 +15,10 @@ CLF_PATH=SRC_DIR / "spam_classifier.joblib"
 MAX_LENGTH=128
 MODEL_NAME="cointegrated/rubert-tiny"
 
+CAPTCHA_MAX_ATTEMPTS = 3
+POLL_TIMEOUT_SECONDS = 30
+POLL_TIMEOUT_BUFFER = 3
+
 MOSCOW_TZ=ZoneInfo("Europe/Moscow")
 ANTISPAM_BOT_TOKEN=getenv("ANTISPAM_BOT_TOKEN")
 ELIXIR_CHAT_ID=int(getenv("ELIXIR_CHAT_ID"))

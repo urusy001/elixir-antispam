@@ -3,9 +3,9 @@ from datetime import datetime
 from aiogram import Dispatcher, Bot
 
 from config import ANTISPAM_BOT_TOKEN, MOSCOW_TZ, ELIXIR_CHAT_ID
-from src.bot.handlers.chat import pass_user
+from src.bot.handlers.chat_shared import pass_user
 from src.bot.handlers import *
-from src.database import get_session
+from src.database import get_session, init_db
 from src.chat_user import get_users_with_active_mute
 
 bot = Bot(ANTISPAM_BOT_TOKEN)
@@ -21,6 +21,7 @@ async def restore_mutes(chat_id: int):
         asyncio.create_task(pass_user(chat_id, user.id, bot, timer))
 
 async def run_bot():
+    await init_db()
     await bot.delete_webhook(False)
     await restore_mutes(chat_id=ELIXIR_CHAT_ID)
     await dp.start_polling(bot)
