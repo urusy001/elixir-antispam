@@ -106,8 +106,8 @@ async def handle_chat_message(message: Message):
 
     if matched_blocked_domain:
         await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
-        await answer_ephemeral(message, f"Обнаружена ссылка на заблокированный домен <code>{matched_blocked_domain}</code>.\nПользователь {user.mention_html()} ограничен в отправке сообщений <b>без срока</b>.")
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
+        await answer_ephemeral(message, "Вы были заблокированы за рекламу.")
         return await append_message_to_csv(text, 1)
 
     if whitelist: return await append_message_to_csv(text, 0)

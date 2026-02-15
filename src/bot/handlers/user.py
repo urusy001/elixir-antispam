@@ -12,13 +12,10 @@ router = Router(name="user")
 
 @router.message(CHAT_USER_FILTER, Command("report"))
 async def handle_report(message: Message):
-    if not message.reply_to_message or not message.reply_to_message.from_user:
-        return await answer_ephemeral(message, "Ответьте командой <code>/report</code> на сообщение пользователя, на которого хотите пожаловаться.")
+    if not message.reply_to_message or not message.reply_to_message.from_user: return await answer_ephemeral(message, "Ответьте командой <code>/report</code> на сообщение пользователя, на которого хотите пожаловаться.")
 
     target = message.reply_to_message.from_user
-
-    if message.from_user and target.id == message.from_user.id:
-        return await answer_ephemeral(message, "Нельзя отправить жалобу на самого себя.")
+    if message.from_user and target.id == message.from_user.id: return await answer_ephemeral(message, "Нельзя отправить жалобу на самого себя.")
 
     async with get_session() as session:
         user = await get_chat_user(session, target.id)

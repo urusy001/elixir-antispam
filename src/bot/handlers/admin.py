@@ -7,7 +7,7 @@ from aiogram.enums import ChatType
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from config import MOSCOW_TZ
+from config import MOSCOW_TZ, ELIXIR_CHAT_ID
 from src.bot.handlers.chat_shared import answer_ephemeral, safe_unrestrict, safe_restrict, pass_user
 from src.bot.permissions import NEW_USER
 from src.image import extract_text_from_image
@@ -18,7 +18,21 @@ from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpda
 from src.database.blocked_links import add_blocked_link, remove_blocked_link, extract_base_domain
 
 router = Router(name="admin")
-router.message.filter(CHAT_ADMIN_FILTER)
+
+
+async def ADMIN_OR_PRIVATE_ADMIN_FILTER(message: Message, bot) -> bool:
+    if await CHAT_ADMIN_FILTER(message, bot): return True
+    if message.chat.type != ChatType.PRIVATE or not message.from_user: return False
+    try:
+        member = await bot.get_chat_member(ELIXIR_CHAT_ID, message.from_user.id)
+        if member.status not in ("administrator", "creator"): return False
+        command = ((message.text or "").strip().split(maxsplit=1)[0] if message.text else "").split("@")[0].lower()
+        return command in ("/block_link", "/unblock_link")
+    except Exception:
+        return False
+
+
+router.message.filter(ADMIN_OR_PRIVATE_ADMIN_FILTER)
 router.callback_query.filter(CHAT_ADMIN_FILTER)
 
 
