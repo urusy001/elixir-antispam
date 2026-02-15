@@ -1,14 +1,11 @@
 import json
 
 from contextlib import asynccontextmanager
-from sqlalchemy import inspect, Column, String, Boolean, BigInteger, DateTime, select
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
 
-from config import ASYNC_DATABASE_URL, MOSCOW_TZ
+from config import ASYNC_DATABASE_URL
 
 
 @asynccontextmanager
@@ -58,8 +55,8 @@ Base = declarative_base(cls=BaseModelMixin)
 
 async def init_db() -> None:
     # Импорты регистрируют модели в metadata перед create_all
-    import src.chat_user.model  # noqa: F401
-    import src.blocked_links.model  # noqa: F401
+    import src.database.chat_user.model  # noqa: F401
+    import src.database.blocked_links.model  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

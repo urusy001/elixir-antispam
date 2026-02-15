@@ -10,8 +10,8 @@ from src.bot.permissions import NEW_USER
 from src.helpers import append_message_to_csv, CHAT_ADMIN_FILTER
 from src.test_classifier import is_spam
 from src.database import get_session
-from src.blocked_links import get_blocked_links, extract_base_domains_from_text
-from src.chat_user import update_chat_user, get_chat_user, ChatUserUpdate, upsert_chat_user
+from src.database.blocked_links import get_blocked_links, extract_base_domains_from_text
+from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate, upsert_chat_user
 from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, compute_ai_user_risk, mute_label, resolve_spam_mute_delta, extract_entity_domains, extract_message_text, apply_permanent_restriction
 from src.bot.handlers.chat_shared import send_ephemeral_message, answer_ephemeral, safe_restrict, pass_user, safe_delete_message
 from src.bot.handlers.chat_captcha import POLL_THREADS, start_captcha

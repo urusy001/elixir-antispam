@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.blocked_links.model import BlockedLink
+from src.database.blocked_links.model import BlockedLink
 
 
 async def add_blocked_link(db: AsyncSession, url: str) -> bool:

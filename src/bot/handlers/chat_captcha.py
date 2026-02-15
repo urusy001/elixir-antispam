@@ -9,7 +9,7 @@ from config import MOSCOW_TZ, CAPTCHA_MAX_ATTEMPTS, POLL_TIMEOUT_BUFFER, POLL_TI
 from src.bot.permissions import NEW_USER
 from src.database import get_session
 from src.poll_questions import POLL_QUESTIONS_RU, PollQuestion
-from src.chat_user import get_chat_user, update_chat_user, upsert_chat_user, ChatUserUpdate
+from src.database.chat_user import get_chat_user, update_chat_user, upsert_chat_user, ChatUserUpdate
 from src.bot.handlers.chat_helpers import far_future, is_permanently_banned, build_chat_user_create
 from src.bot.handlers.chat_shared import send_ephemeral_message, safe_restrict, safe_delete_message
 

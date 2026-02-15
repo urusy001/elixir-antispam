@@ -14,8 +14,8 @@ from src.image import extract_text_from_image
 from src.test_classifier import is_spam
 from src.helpers import CHAT_ADMIN_FILTER, _notify_user, append_message_to_csv
 from src.database import get_session
-from src.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
-from src.blocked_links import add_blocked_link, remove_blocked_link, extract_base_domain
+from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
+from src.database.blocked_links import add_blocked_link, remove_blocked_link, extract_base_domain
 
 router = Router(name="admin")
 router.message.filter(CHAT_ADMIN_FILTER)

@@ -6,7 +6,7 @@ from config import ANTISPAM_BOT_TOKEN, MOSCOW_TZ, ELIXIR_CHAT_ID
 from src.bot.handlers.chat_shared import pass_user
 from src.bot.handlers import *
 from src.database import get_session, init_db
-from src.chat_user import get_users_with_active_mute
+from src.database.chat_user import get_users_with_active_mute
 
 bot = Bot(ANTISPAM_BOT_TOKEN)
 dp = Dispatcher()

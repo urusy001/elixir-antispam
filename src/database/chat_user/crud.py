@@ -4,8 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import MOSCOW_TZ
-from src.chat_user.model import ChatUser
-from src.chat_user.schema import ChatUserUpdate, ChatUserCreate
+from src.database.chat_user.model import ChatUser
+from src.database.chat_user.schema import ChatUserUpdate, ChatUserCreate
 
 
 async def get_chat_user(db: AsyncSession, user_id: int) -> Optional[ChatUser]:

@@ -6,7 +6,7 @@ from config import REPORTS_CHANNEL_ID
 from src.bot.handlers.chat_helpers import CHAT_USER_FILTER
 from src.bot.handlers.chat_shared import answer_ephemeral
 from src.database import get_session
-from src.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
+from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
 
 router = Router(name="user")
 

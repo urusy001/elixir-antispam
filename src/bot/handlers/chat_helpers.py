@@ -7,8 +7,8 @@ from aiogram.types import Message
 
 from config import ELIXIR_CHAT_ID
 from src.image import extract_text_from_image
-from src.blocked_links import extract_base_domain
-from src.chat_user import ChatUserCreate, ChatUserUpdate, update_chat_user
+from src.database.blocked_links import extract_base_domain
+from src.database.chat_user import ChatUserCreate, ChatUserUpdate, update_chat_user
 
 PERMANENT_RESTRICTION_DAYS = 365 * 100
 PERMANENT_BAN_THRESHOLD_DAYS = 365 * 10
