@@ -6,12 +6,11 @@ from typing import Optional
 from aiogram import Bot
 
 from config import MOSCOW_TZ, CAPTCHA_MAX_ATTEMPTS, POLL_TIMEOUT_BUFFER, POLL_TIMEOUT_SECONDS
-from src.bot.permissions import NEW_USER
 from src.database import get_session
 from src.poll_questions import POLL_QUESTIONS_RU, PollQuestion
 from src.database.chat_user import get_chat_user, update_chat_user, upsert_chat_user, ChatUserUpdate
 from src.bot.handlers.chat_helpers import far_future, is_permanently_banned, build_chat_user_create
-from src.bot.handlers.chat_shared import send_ephemeral_message, safe_restrict, safe_delete_message
+from src.bot.handlers.chat_shared import send_ephemeral_message, safe_ban_user, safe_delete_message
 
 POLL_THREADS: dict[str, Optional[int]] = {}
 
@@ -37,7 +36,7 @@ async def captcha_timeout_worker(bot: Bot, poll_id: str, user_id: int, chat_id: 
         if attempts >= CAPTCHA_MAX_ATTEMPTS:
             await update_chat_user(session, user_id, ChatUserUpdate(poll_attempts=attempts, poll_active=False, poll_chat_id=None, poll_message_id=None, poll_id=None, poll_correct_option_id=None, muted_until=far_future(now), banned_until=None, times_banned=(user.times_banned or 0) + 1))
             if chat_id_db:
-                await safe_restrict(bot, chat_id_db, user_id, NEW_USER)
+                await safe_ban_user(bot, chat_id_db, user_id)
                 await send_ephemeral_message(bot, chat_id_db, f'<a href="tg://user?id={user_id}">Пользователь</a> не прошёл проверку.\nКоличество попыток исчерпано. Права на отправку сообщений ограничены до решения администратора.', thread_id=thread_id)
         else:
             await update_chat_user(session, user_id, ChatUserUpdate(poll_attempts=attempts, poll_active=False, poll_chat_id=None, poll_message_id=None, poll_id=None, poll_correct_option_id=None))

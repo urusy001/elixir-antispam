@@ -1,11 +1,12 @@
 import asyncio
 import logging
 
+from datetime import datetime
 from typing import Optional
 from aiogram import Bot
 from aiogram.types import Message
 
-from src.bot.permissions import USER_PASSED
+from src.bot.permissions import NEW_USER, USER_PASSED
 from src.database import get_session
 from src.database.chat_user import update_chat_user, ChatUserUpdate
 
@@ -41,26 +42,34 @@ async def answer_ephemeral(message: Message, text: str):
     return msg
 
 
-async def safe_restrict(bot: Bot, chat_id: int, user_id: int, permissions) -> bool:
+async def safe_restrict(bot: Bot, chat_id: int, user_id: int, permissions, *, until_date: Optional[datetime] = None) -> bool:
+    try: member = await bot.get_chat_member(chat_id, user_id)
+    except Exception: return False
+    if member.status in ("left", "kicked"): return False
     try:
-        member = await bot.get_chat_member(chat_id, user_id)
-    except Exception:
-        return False
-    if member.status in ("left", "kicked"):
-        return False
-    try:
-        await bot.restrict_chat_member(chat_id, user_id, permissions)
+        await bot.restrict_chat_member(chat_id, user_id, permissions, until_date=until_date)
         return True
-    except Exception:
-        return False
+    except Exception: return False
+
+
+async def safe_ban_user(
+    bot: Bot,
+    chat_id: int,
+    user_id: int,
+    *,
+    until_date: Optional[datetime] = None,
+    revoke_messages: bool = True,
+) -> bool:
+    _ = revoke_messages
+    return await safe_restrict(bot, chat_id, user_id, NEW_USER, until_date=until_date)
 
 
 async def safe_unrestrict(bot: Bot, chat_id: int, user_id: int) -> bool:
     return await safe_restrict(bot, chat_id, user_id, USER_PASSED)
 
 
-async def pass_user(chat_id: int, user_id: int, bot: Bot, timer: Optional[float] = 24 * 60 * 60):
+
+async def pass_user(_chat_id: int, user_id: int, _bot: Bot, timer: Optional[float] = 24 * 60 * 60):
     await asyncio.sleep(timer)
-    await safe_unrestrict(bot, chat_id, user_id)
     async with get_session() as session:
         await update_chat_user(session, user_id, ChatUserUpdate(muted_until=None))

@@ -13,7 +13,7 @@ from src.database import get_session
 from src.database.blocked_links import get_blocked_links, extract_base_domains_from_text
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate, upsert_chat_user
 from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, compute_ai_user_risk, mute_label, resolve_spam_mute_delta, extract_entity_domains, extract_message_text, apply_permanent_restriction
-from src.bot.handlers.chat_shared import send_ephemeral_message, answer_ephemeral, safe_restrict, pass_user, safe_delete_message
+from src.bot.handlers.chat_shared import send_ephemeral_message, answer_ephemeral, safe_restrict, safe_ban_user, pass_user, safe_delete_message
 from src.bot.handlers.chat_captcha import POLL_THREADS, start_captcha
 
 router = Router(name="chat")
@@ -54,7 +54,7 @@ async def handle_poll_answer(answer: PollAnswer, bot: Bot):
         if attempts >= CAPTCHA_MAX_ATTEMPTS:
             await update_chat_user(session, user_id, ChatUserUpdate(poll_attempts=attempts, poll_active=False, poll_chat_id=None, poll_message_id=None, poll_id=None, poll_correct_option_id=None, muted_until=far_future(now), banned_until=None, times_banned=(user.times_banned or 0) + 1))
             if chat_id:
-                await safe_restrict(bot, chat_id, user_id, NEW_USER)
+                await safe_ban_user(bot, chat_id, user_id)
                 await send_ephemeral_message(bot, chat_id, f"{answer.user.mention_html()}, проверка не пройдена.\nКоличество попыток исчерпано. Права на отправку сообщений ограничены до решения администратора.", thread_id=thread_id)
 
         else:
@@ -95,7 +95,7 @@ async def handle_chat_message(message: Message):
             ai_user_risk = compute_ai_user_risk(new_messages_sent, chat_user.times_reported or 0, chat_user.times_muted or 0)
 
         if is_permanently_banned(chat_user, now):
-            await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
+            await safe_ban_user(message.bot, message.chat.id, user.id)
             await safe_delete_message(message.bot, message.chat.id, message.message_id)
             return None
 
@@ -105,9 +105,9 @@ async def handle_chat_message(message: Message):
             if matched_blocked_domain: await apply_permanent_restriction(user.id, chat_user, session, now, text)
 
     if matched_blocked_domain:
-        await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
+        await safe_ban_user(message.bot, message.chat.id, user.id)
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
-        await answer_ephemeral(message, "Вы были заблокированы за рекламу.")
+        await answer_ephemeral(message, "Вы были ограничены в правах за рекламу.")
         return await append_message_to_csv(text, 1)
 
     if whitelist: return await append_message_to_csv(text, 0)
@@ -125,7 +125,7 @@ async def handle_chat_message(message: Message):
             times_reported = (chat_user.times_reported if chat_user else 0) + 1
             if p >= 0.8:
                 await apply_permanent_restriction(user.id, chat_user, session, now, text)
-                await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
+                await safe_ban_user(message.bot, message.chat.id, user.id)
                 await answer_ephemeral(message, f"Сообщение с очень высокой вероятностью является спамом.\nПользователь {user.mention_html()} ограничен в отправке сообщений <b>без срока</b>.")
 
             else:
@@ -138,13 +138,13 @@ async def handle_chat_message(message: Message):
                     mute_delta = resolve_spam_mute_delta(new_count)
                     if mute_delta is None:
                         await apply_permanent_restriction(user.id, chat_user, session, now, text, times_muted=new_count)
-                        await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
+                        await safe_ban_user(message.bot, message.chat.id, user.id)
                         await answer_ephemeral(message, f"Сообщение похоже на спам.\nПользователь {user.mention_html()} ограничен в отправке сообщений <b>без срока</b> из-за повторяющегося спама.")
 
                     else:
                         mute_until = now + mute_delta
                         await update_chat_user(session, user.id, ChatUserUpdate(times_reported=times_reported, accused_spam=True, last_accused_text=text[:1024], muted_until=mute_until, times_muted=new_count))
-                        await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER)
+                        await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER, until_date=mute_until)
                         await answer_ephemeral(message, f"Сообщение похоже на спам.\nПользователь {user.mention_html()} автоматически ограничен в правах {mute_label(mute_delta)}.\nДля досрочного возвращения прав используйте команду <code>/unmute {user.id}</code>")
                         asyncio.create_task(pass_user(message.chat.id, user.id, message.bot, mute_delta.total_seconds()))
 

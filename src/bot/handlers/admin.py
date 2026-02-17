@@ -5,7 +5,7 @@ from typing import Optional
 from aiogram import Router
 from aiogram.enums import ChatType
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, BufferedInputFile
 
 from config import MOSCOW_TZ, ELIXIR_CHAT_ID
 from src.bot.handlers.chat_shared import answer_ephemeral, safe_unrestrict, safe_restrict, pass_user
@@ -15,7 +15,7 @@ from src.test_classifier import is_spam
 from src.helpers import CHAT_ADMIN_FILTER, _notify_user, append_message_to_csv
 from src.database import get_session
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
-from src.database.blocked_links import add_blocked_link, remove_blocked_link, extract_base_domain
+from src.database.blocked_links import add_blocked_link, remove_blocked_link, get_blocked_links, extract_base_domain
 
 router = Router(name="admin")
 
@@ -27,7 +27,7 @@ async def ADMIN_OR_PRIVATE_ADMIN_FILTER(message: Message, bot) -> bool:
         member = await bot.get_chat_member(ELIXIR_CHAT_ID, message.from_user.id)
         if member.status not in ("administrator", "creator"): return False
         command = ((message.text or "").strip().split(maxsplit=1)[0] if message.text else "").split("@")[0].lower()
-        return command in ("/block_link", "/unblock_link")
+        return command in ("/block_link", "/unblock_link", "/links")
     except Exception:
         return False
 
@@ -62,6 +62,15 @@ async def handle_unblock_link(message: Message):
     async with get_session() as session: removed = await remove_blocked_link(session, domain)
     if removed:return await answer_ephemeral(message, f"Домен <code>{domain}</code> удален из блок-листа.")
     return await answer_ephemeral(message, f"Домен <code>{domain}</code> не найден в блок-листе.")
+
+
+@router.message(Command("links"))
+async def handle_links(message: Message):
+    async with get_session() as session: links = await get_blocked_links(session)
+    lines = sorted(links)
+    body = "\n".join(lines) if lines else "Список заблокированных ссылок пуст."
+    file = BufferedInputFile(body.encode("utf-8"), filename="blocked_links.txt")
+    return await message.answer_document(file, caption=f"Заблокированных доменов: {len(lines)}")
 
 @router.message(Command("spam"))
 async def handle_spam(message: Message):
@@ -102,8 +111,10 @@ async def handle_mute(message: Message):
             await update_chat_user(session, target.id, ChatUserUpdate(muted_until=mute_until, times_muted=times_muted))
 
         asyncio.create_task(pass_user(chat_id, target.id, message.bot, timer))
+        await safe_restrict(message.bot, chat_id, target.id, NEW_USER, until_date=mute_until)
+    else:
+        await safe_restrict(message.bot, chat_id, target.id, NEW_USER)
 
-    await safe_restrict(message.bot, chat_id, target.id, NEW_USER)
     label = "" if not timer else f" на {minutes_str} минут"
     return asyncio.create_task(_notify_user(message, f"Пользователь {target.mention_html()} успешно <b>ограничен в правах{label}</b>\nДля возвращения прав используйте команду <code>/unmute {target.id}</code>", 300))
 
@@ -141,7 +152,7 @@ async def handle_unmute(message: Message):
     if not user_id: return await answer_ephemeral(message, "Либо укажите user_id пользователя, либо ответьте командой на его сообщение\n\n<i>Напишите @ShostakovIV в ТГ, если не знаете как получить user_id</i>")
 
     ok = await safe_unrestrict(message.bot, message.chat.id, user_id)
-    async with get_session() as session: await update_chat_user(session, user_id, ChatUserUpdate(muted_until=None))
+    async with get_session() as session: await update_chat_user(session, user_id, ChatUserUpdate(muted_until=None, banned_until=None))
     return await answer_ephemeral(message, "Пользователю успешно возвращены права" if ok else "Не удалось вернуть права: пользователь не найден или уже покинул чат")
 
 
