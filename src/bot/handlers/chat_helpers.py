@@ -32,17 +32,6 @@ def build_chat_user_create(user_id: int, full_name: str, username: Optional[str]
     return ChatUserCreate(id=user_id, full_name=full_name, username=username, passed_poll=passed_poll, whitelist=False, muted_until=None, times_muted=0, banned_until=None, times_banned=0, messages_sent=messages_sent, times_reported=0, accused_spam=False, last_accused_text=None, poll_attempts=0, poll_active=False, poll_message_id=None, poll_chat_id=None, poll_id=None, poll_correct_option_id=None)
 
 
-def compute_ai_user_risk(messages_sent: int, reports: int, mutes: int) -> float:
-    risk = 1.0
-    risk += min(0.25, reports * 0.08)
-    risk += min(0.25, mutes * 0.10)
-    if messages_sent <= 3:
-        risk += 0.10
-    if messages_sent >= 50 and reports == 0 and mutes == 0:
-        risk -= 0.10
-    return min(1.35, max(0.75, risk))
-
-
 def mute_label(mute_delta: timedelta) -> str:
     if mute_delta.days >= 30:
         return "на 1 месяц"

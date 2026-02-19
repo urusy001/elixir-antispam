@@ -12,7 +12,7 @@ from src.bot.handlers.chat_shared import answer_ephemeral, safe_unrestrict, safe
 from src.bot.permissions import NEW_USER
 from src.image import extract_text_from_image
 from src.test_classifier import is_spam
-from src.helpers import CHAT_ADMIN_FILTER, _notify_user, append_message_to_csv
+from src.helpers import _notify_user, append_message_to_csv
 from src.database import get_session
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
 from src.database.blocked_links import add_blocked_link, remove_blocked_link, get_blocked_links, extract_base_domain
@@ -21,7 +21,6 @@ router = Router(name="admin")
 
 
 async def ADMIN_OR_PRIVATE_ADMIN_FILTER(message: Message, bot) -> bool:
-    if await CHAT_ADMIN_FILTER(message, bot): return True
     if message.chat.type != ChatType.PRIVATE or not message.from_user: return False
     try:
         member = await bot.get_chat_member(ELIXIR_CHAT_ID, message.from_user.id)
@@ -29,11 +28,11 @@ async def ADMIN_OR_PRIVATE_ADMIN_FILTER(message: Message, bot) -> bool:
         if member.status not in ("administrator", "creator"): return False
         return True
 
-    except Exception: return False
+    except Exception: return True
 
 
 router.message.filter(ADMIN_OR_PRIVATE_ADMIN_FILTER)
-router.callback_query.filter(CHAT_ADMIN_FILTER)
+router.callback_query.filter(ADMIN_OR_PRIVATE_ADMIN_FILTER)
 
 
 @router.message(Command("block_link"))

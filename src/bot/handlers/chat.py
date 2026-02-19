@@ -12,7 +12,7 @@ from src.test_classifier import is_spam
 from src.database import get_session
 from src.database.blocked_links import get_blocked_links, extract_base_domains_from_text
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate, upsert_chat_user
-from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, compute_ai_user_risk, mute_label, resolve_spam_mute_delta, extract_entity_domains, extract_message_text, apply_permanent_restriction
+from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, mute_label, resolve_spam_mute_delta, extract_entity_domains, extract_message_text, apply_permanent_restriction
 from src.bot.handlers.chat_shared import send_ephemeral_message, answer_ephemeral, safe_restrict, safe_ban_user, pass_user, safe_delete_message
 from src.bot.handlers.chat_captcha import POLL_THREADS, start_captcha
 
@@ -77,7 +77,6 @@ async def handle_chat_message(message: Message):
     now = datetime.now(tz=MOSCOW_TZ)
     whitelist = await CHAT_ADMIN_FILTER(message, message.bot)
     passed_poll = True
-    ai_user_risk = 1.0
     matched_blocked_domain = None
 
     async with get_session() as session:
@@ -85,14 +84,12 @@ async def handle_chat_message(message: Message):
         if chat_user is None:
             await upsert_chat_user(session, build_chat_user_create(user.id, full_name=user.full_name or "", username=user.username, passed_poll=True, messages_sent=1))
             chat_user = await get_chat_user(session, user.id)
-            ai_user_risk = 1.05
 
         else:
             whitelist = whitelist or bool(chat_user.whitelist)
             passed_poll = bool(chat_user.passed_poll)
             new_messages_sent = (chat_user.messages_sent or 0) + 1
             await update_chat_user(session, user.id, ChatUserUpdate(messages_sent=new_messages_sent))
-            ai_user_risk = compute_ai_user_risk(new_messages_sent, chat_user.times_reported or 0, chat_user.times_muted or 0)
 
         if is_permanently_banned(chat_user, now):
             await safe_ban_user(message.bot, message.chat.id, user.id)
@@ -116,7 +113,7 @@ async def handle_chat_message(message: Message):
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
         return None
 
-    result, p = await is_spam(text, user_risk=ai_user_risk)
+    result, p = await is_spam(text)
     print(result, p, text)
 
     if result:
@@ -149,5 +146,4 @@ async def handle_chat_message(message: Message):
                         asyncio.create_task(pass_user(message.chat.id, user.id, message.bot, mute_delta.total_seconds()))
 
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
-
     return await append_message_to_csv(text, int(result))
