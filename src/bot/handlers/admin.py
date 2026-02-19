@@ -15,7 +15,7 @@ from src.test_classifier import is_spam
 from src.helpers import _notify_user, append_message_to_csv
 from src.database import get_session
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
-from src.database.blocked_links import add_blocked_link, remove_blocked_link, get_blocked_links, extract_base_domain
+from src.database.blocked_links import add_blocked_link, remove_blocked_link, get_blocked_links, normalize_blocked_link
 
 router = Router(name="admin")
 
@@ -41,12 +41,13 @@ async def handle_block_link(message: Message):
     raw_link = parts[1].strip() if len(parts) > 1 else ""
     if not raw_link: return await answer_ephemeral(message, "<b>Ошибка команды:</b> указывайте ссылку, которую нужно заблокировать.\n\n<b>Пример:</b> <code>/block_link https://spam.example.com/promo</code>")
 
-    domain = extract_base_domain(raw_link)
-    if not domain: return await answer_ephemeral(message, "<b>Ошибка команды:</b> не удалось распознать домен в ссылке.")
+    blocked_value = normalize_blocked_link(raw_link)
+    if not blocked_value: return await answer_ephemeral(message, "<b>Ошибка команды:</b> не удалось распознать ссылку или домен.")
 
-    async with get_session() as session: added = await add_blocked_link(session, domain)
-    if added: return await answer_ephemeral(message, f"Домен <code>{domain}</code> добавлен в блок-лист.")
-    return await answer_ephemeral(message, f"Домен <code>{domain}</code> уже находится в блок-листе.")
+    async with get_session() as session: added = await add_blocked_link(session, blocked_value)
+    label = "Ссылка" if blocked_value.startswith("t.me/") else "Домен"
+    if added: return await answer_ephemeral(message, f"{label} <code>{blocked_value}</code> добавлен в блок-лист.")
+    return await answer_ephemeral(message, f"{label} <code>{blocked_value}</code> уже находится в блок-листе.")
 
 
 @router.message(Command("unblock_link"))
@@ -55,12 +56,13 @@ async def handle_unblock_link(message: Message):
     raw_link = parts[1].strip() if len(parts) > 1 else ""
     if not raw_link: return await answer_ephemeral(message, "<b>Ошибка команды:</b> указывайте ссылку, которую нужно разблокировать.\n\n<b>Пример:</b> <code>/unblock_link https://spam.example.com/promo</code>")
 
-    domain = extract_base_domain(raw_link)
-    if not domain: return await answer_ephemeral(message, "<b>Ошибка команды:</b> не удалось распознать домен в ссылке.")
+    blocked_value = normalize_blocked_link(raw_link)
+    if not blocked_value: return await answer_ephemeral(message, "<b>Ошибка команды:</b> не удалось распознать ссылку или домен.")
 
-    async with get_session() as session: removed = await remove_blocked_link(session, domain)
-    if removed:return await answer_ephemeral(message, f"Домен <code>{domain}</code> удален из блок-листа.")
-    return await answer_ephemeral(message, f"Домен <code>{domain}</code> не найден в блок-листе.")
+    async with get_session() as session: removed = await remove_blocked_link(session, blocked_value)
+    label = "Ссылка" if blocked_value.startswith("t.me/") else "Домен"
+    if removed:return await answer_ephemeral(message, f"{label} <code>{blocked_value}</code> удален из блок-листа.")
+    return await answer_ephemeral(message, f"{label} <code>{blocked_value}</code> не найден в блок-листе.")
 
 
 @router.message(Command("links"))
@@ -69,7 +71,7 @@ async def handle_links(message: Message):
     lines = sorted(links)
     body = "\n".join(lines) if lines else "Список заблокированных ссылок пуст."
     file = BufferedInputFile(body.encode("utf-8"), filename="blocked_links.txt")
-    return await message.answer_document(file, caption=f"Заблокированных доменов: {len(lines)}")
+    return await message.answer_document(file, caption=f"Заблокированных ссылок/доменов: {len(lines)}")
 
 @router.message(Command("spam"))
 async def handle_spam(message: Message):

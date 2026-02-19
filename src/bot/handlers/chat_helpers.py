@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from config import ELIXIR_CHAT_ID
 from src.image import extract_text_from_image
-from src.database.blocked_links import extract_base_domain
+from src.database.blocked_links import extract_base_domain, normalize_blocked_link
 from src.database.chat_user import ChatUserCreate, ChatUserUpdate, update_chat_user
 
 PERMANENT_RESTRICTION_DAYS = 365 * 100
@@ -57,6 +57,9 @@ def extract_entity_domains(message: Message) -> set[str]:
     for entity in (message.entities or []) + (message.caption_entities or []):
         if entity.type != MessageEntityType.TEXT_LINK or not entity.url:
             continue
+        blocked_target = normalize_blocked_link(entity.url)
+        if blocked_target:
+            domains.add(blocked_target)
         entity_domain = extract_base_domain(entity.url)
         if entity_domain:
             domains.add(entity_domain)

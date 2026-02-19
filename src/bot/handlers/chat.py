@@ -10,7 +10,7 @@ from src.bot.permissions import NEW_USER
 from src.helpers import append_message_to_csv, CHAT_ADMIN_FILTER
 from src.test_classifier import is_spam
 from src.database import get_session
-from src.database.blocked_links import get_blocked_links, extract_base_domains_from_text
+from src.database.blocked_links import get_blocked_links, extract_blocked_targets_from_text
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate, upsert_chat_user
 from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, mute_label, resolve_spam_mute_delta, extract_entity_domains, extract_message_text, apply_permanent_restriction
 from src.bot.handlers.chat_shared import send_ephemeral_message, answer_ephemeral, safe_restrict, safe_ban_user, pass_user, safe_delete_message
@@ -70,14 +70,14 @@ async def handle_poll_answer(answer: PollAnswer, bot: Bot):
 async def handle_chat_message(message: Message):
     text = await extract_message_text(message)
     if not text: return None
-    domains_in_message = extract_base_domains_from_text(text) | extract_entity_domains(message)
+    blocked_targets_in_message = extract_blocked_targets_from_text(text) | extract_entity_domains(message)
     user = message.from_user
     if not user: return None
 
     now = datetime.now(tz=MOSCOW_TZ)
     whitelist = await CHAT_ADMIN_FILTER(message, message.bot)
     passed_poll = True
-    matched_blocked_domain = None
+    matched_blocked_target = None
 
     async with get_session() as session:
         chat_user = await get_chat_user(session, user.id)
@@ -96,12 +96,12 @@ async def handle_chat_message(message: Message):
             await safe_delete_message(message.bot, message.chat.id, message.message_id)
             return None
 
-        if not whitelist and domains_in_message:
-            blocked_domains = await get_blocked_links(session)
-            matched_blocked_domain = next((domain for domain in domains_in_message if domain in blocked_domains), None)
-            if matched_blocked_domain: await apply_permanent_restriction(user.id, chat_user, session, now, text)
+        if not whitelist and blocked_targets_in_message:
+            blocked_values = await get_blocked_links(session)
+            matched_blocked_target = next((target for target in blocked_targets_in_message if target in blocked_values), None)
+            if matched_blocked_target: await apply_permanent_restriction(user.id, chat_user, session, now, text)
 
-    if matched_blocked_domain:
+    if matched_blocked_target:
         await safe_ban_user(message.bot, message.chat.id, user.id)
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
         await answer_ephemeral(message, "Вы были ограничены в правах за рекламу.")
