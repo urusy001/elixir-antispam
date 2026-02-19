@@ -25,11 +25,11 @@ async def ADMIN_OR_PRIVATE_ADMIN_FILTER(message: Message, bot) -> bool:
     if message.chat.type != ChatType.PRIVATE or not message.from_user: return False
     try:
         member = await bot.get_chat_member(ELIXIR_CHAT_ID, message.from_user.id)
+        print(member.status)
         if member.status not in ("administrator", "creator"): return False
-        command = ((message.text or "").strip().split(maxsplit=1)[0] if message.text else "").split("@")[0].lower()
-        return command in ("/block_link", "/unblock_link", "/links")
-    except Exception:
-        return False
+        return True
+
+    except Exception: return False
 
 
 router.message.filter(ADMIN_OR_PRIVATE_ADMIN_FILTER)
