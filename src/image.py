@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import pytesseract
+
 from typing import IO
 from pathlib import Path
 from PIL import Image
