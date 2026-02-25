@@ -9,4 +9,4 @@ def extract_text_from_image(image_path: Path | IO[bytes]) -> str:
     """Run Tesseract OCR on a single image and return text (Russian + English)."""
     image = Image.open(image_path)
     print('extract_text_from_image')
-    return pytesseract.image_to_string(image, lang="rus+eng")
+    return pytesseract.image_to_string(image, lang="rus")
