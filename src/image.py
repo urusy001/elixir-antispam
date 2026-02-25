@@ -164,7 +164,7 @@ def extract_text_from_image(image_path: Path | IO[bytes]) -> str:
 
     for variant in variants:
         for config in _OCR_CONFIGS:
-            raw_text = pytesseract.image_to_string(variant, lang="rus+eng", config=config)
+            raw_text = pytesseract.image_to_string(variant, lang="rus", config=config)
             text = _normalize_ocr_text(raw_text)
             if not text or text in seen_texts:
                 continue
