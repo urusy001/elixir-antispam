@@ -18,7 +18,7 @@ model.eval()
 
 artifact = joblib.load(CLF_PATH)
 clf = artifact["classifier"]
-threshold = 0.65
+threshold = 0.34
 
 @torch.no_grad()
 def embed_one(text: str) -> np.ndarray:
