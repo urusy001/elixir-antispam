@@ -66,7 +66,7 @@ async def handle_poll_answer(answer: PollAnswer, bot: Bot):
         return POLL_THREADS.pop(poll_id, None)
 
 
-@router.message(CHAT_USER_FILTER, lambda message: getattr(message, "message_thread_id", None) is None)
+@router.message(CHAT_USER_FILTER, lambda message: getattr(message, "message_thread_id", None) in [None, 27775])
 async def handle_chat_message(message: Message):
     text = await extract_message_text(message)
     if not text: return None
