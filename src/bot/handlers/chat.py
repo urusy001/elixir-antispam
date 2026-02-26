@@ -107,7 +107,7 @@ async def handle_chat_message(message: Message):
         await answer_ephemeral(message, "Вы были ограничены в правах за рекламу.")
         return await append_message_to_csv(text, 1)
 
-    if whitelist: return await append_message_to_csv(text, 0)
+    if whitelist or passed_poll: return await append_message_to_csv(text, 0)
     if not passed_poll:
         await start_captcha(message.bot, message.chat.id, user.id, message.message_thread_id)
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
