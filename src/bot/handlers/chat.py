@@ -107,7 +107,7 @@ async def handle_chat_message(message: Message):
         await answer_ephemeral(message, "Вы были ограничены в правах за рекламу.")
         return await append_message_to_csv(text, 1)
 
-    if whitelist or passed_poll: return await append_message_to_csv(text, 0)
+    if whitelist: return await append_message_to_csv(text, 0)
     if not passed_poll:
         await start_captcha(message.bot, message.chat.id, user.id, message.message_thread_id)
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
@@ -124,6 +124,10 @@ async def handle_chat_message(message: Message):
                 await apply_permanent_restriction(user.id, chat_user, session, now, text)
                 await safe_ban_user(message.bot, message.chat.id, user.id)
                 await answer_ephemeral(message, f"Сообщение с очень высокой вероятностью является спамом.\nПользователь {user.mention_html()} ограничен в отправке сообщений <b>без срока</b>.")
+
+            elif passed_poll:
+                await update_chat_user(session, user.id, ChatUserUpdate(times_reported=times_reported, accused_spam=True, last_accused_text=text[:1024]))
+                await answer_ephemeral(message, "Сообщение похоже на спам.\nПользователь прошел проверку, поэтому ограничения не выданы.")
 
             else:
                 new_count = (chat_user.times_muted if chat_user else 0) + 1
