@@ -1,9 +1,12 @@
+import os
 from os import getenv
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 load_dotenv()
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 WORKING_DIR=Path(__file__).parent
 LOGS_DIR=WORKING_DIR / "logs"

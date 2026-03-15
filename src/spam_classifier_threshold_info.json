@@ -1,0 +1,47 @@
+{
+  "chosen_threshold": 0.3699999999999999,
+  "validation_threshold_metrics": {
+    "threshold": 0.3699999999999999,
+    "accuracy": 0.9696969696969697,
+    "ham_precision": 0.992,
+    "ham_recall": 0.9465648854961832,
+    "ham_f1": 0.96875,
+    "spam_precision": 0.9496402877697842,
+    "spam_recall": 0.9924812030075187,
+    "spam_f1": 0.9705882352941176,
+    "tn": 124,
+    "fp": 7,
+    "fn": 1,
+    "tp": 132
+  },
+  "test_metrics_at_0_5": {
+    "accuracy": 0.9507575757575758,
+    "ham_precision": 0.968503937007874,
+    "ham_recall": 0.9318181818181818,
+    "ham_f1": 0.9498069498069498,
+    "ham_support": 132,
+    "spam_precision": 0.9343065693430657,
+    "spam_recall": 0.9696969696969697,
+    "spam_f1": 0.9516728624535316,
+    "spam_support": 132,
+    "tn": 123,
+    "fp": 9,
+    "fn": 4,
+    "tp": 128
+  },
+  "test_metrics_at_chosen_threshold": {
+    "accuracy": 0.946969696969697,
+    "ham_precision": 0.9682539682539683,
+    "ham_recall": 0.9242424242424242,
+    "ham_f1": 0.9457364341085271,
+    "ham_support": 132,
+    "spam_precision": 0.927536231884058,
+    "spam_recall": 0.9696969696969697,
+    "spam_f1": 0.9481481481481482,
+    "spam_support": 132,
+    "tn": 122,
+    "fp": 10,
+    "fn": 4,
+    "tp": 128
+  }
+}
