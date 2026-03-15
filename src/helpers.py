@@ -9,14 +9,14 @@ from aiogram.types import Message
 from config import CSV_PATH, ELIXIR_CHAT_ID
 
 _csv_lock = asyncio.Lock()
-async def append_message_to_csv(text: str, label: int | str = 0, proba: int | float = 0) -> None:
+async def append_message_to_csv(text: str, label: int | float) -> None:
     text = text.replace("\r\n", "\n").replace("\r", "\n")  # чуть-чуть нормализуем
     async with _csv_lock:
         file_exists = CSV_PATH.exists()
         with CSV_PATH.open("a", encoding="utf-8", newline="") as f:
             writer = csv.writer(f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            if not file_exists: writer.writerow(["Message", "Label", "Proba"])
-            writer.writerow([text, label, proba])
+            if not file_exists: writer.writerow(["Message", "Label"])
+            writer.writerow([text, label])
 
 async def _notify_user(message: Message, text: str, timer: float | None = None, logger: Logger = None) -> None:
     if logger: logger.info("Notify user %s | text_preview=%r | timer=%s", message.from_user.id, text[:100], timer)
