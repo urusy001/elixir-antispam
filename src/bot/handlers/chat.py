@@ -1,12 +1,9 @@
-import asyncio
-
 from datetime import datetime
 from aiogram import Router, Bot
 from aiogram.filters import ChatMemberUpdatedFilter, JOIN_TRANSITION
 from aiogram.types import Message, ChatMemberUpdated, PollAnswer
 
 from config import MOSCOW_TZ, CAPTCHA_MAX_ATTEMPTS
-from src.bot.permissions import NEW_USER
 from src.helpers import append_message_to_csv, CHAT_ADMIN_FILTER
 from src.test_classifier import is_spam
 from src.database import get_session
@@ -114,40 +111,14 @@ async def handle_chat_message(message: Message):
         return None
 
     result, p = await is_spam(text)
-    print(result, p, text)
 
     if result:
         async with get_session() as session:
             chat_user = await get_chat_user(session, user.id)
-            times_reported = (chat_user.times_reported if chat_user else 0) + 1
-            if p >= 0.8:
+            if p >= 0.93:
                 await apply_permanent_restriction(user.id, chat_user, session, now, text)
                 await safe_ban_user(message.bot, message.chat.id, user.id)
                 await answer_ephemeral(message, f"Сообщение с очень высокой вероятностью является спамом.\nПользователь {user.mention_html()} ограничен в отправке сообщений <b>без срока</b>.")
-
-            elif passed_poll:
-                await update_chat_user(session, user.id, ChatUserUpdate(times_reported=times_reported, accused_spam=True, last_accused_text=text[:1024]))
-                await answer_ephemeral(message, "Сообщение похоже на спам.\nПользователь прошел проверку, поэтому ограничения не выданы.")
-
-            else:
-                new_count = (chat_user.times_muted if chat_user else 0) + 1
-                if new_count == 1:
-                    await update_chat_user(session, user.id, ChatUserUpdate(times_reported=times_reported, accused_spam=True, last_accused_text=text[:1024], times_muted=new_count))
-                    await answer_ephemeral(message, "Сообщение похоже на спам.\nСообщение удалено. Это первое предупреждение, ограничения не выданы.")
-
-                else:
-                    mute_delta = resolve_spam_mute_delta(new_count)
-                    if mute_delta is None:
-                        await apply_permanent_restriction(user.id, chat_user, session, now, text, times_muted=new_count)
-                        await safe_ban_user(message.bot, message.chat.id, user.id)
-                        await answer_ephemeral(message, f"Сообщение похоже на спам.\nПользователь {user.mention_html()} ограничен в отправке сообщений <b>без срока</b> из-за повторяющегося спама.")
-
-                    else:
-                        mute_until = now + mute_delta
-                        await update_chat_user(session, user.id, ChatUserUpdate(times_reported=times_reported, accused_spam=True, last_accused_text=text[:1024], muted_until=mute_until, times_muted=new_count))
-                        await safe_restrict(message.bot, message.chat.id, user.id, NEW_USER, until_date=mute_until)
-                        await answer_ephemeral(message, f"Сообщение похоже на спам.\nПользователь {user.mention_html()} автоматически ограничен в правах {mute_label(mute_delta)}.\nДля досрочного возвращения прав используйте команду <code>/unmute {user.id}</code>")
-                        asyncio.create_task(pass_user(message.chat.id, user.id, message.bot, mute_delta.total_seconds()))
 
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
     return await append_message_to_csv(text, int(result), p)
