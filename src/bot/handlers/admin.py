@@ -80,7 +80,7 @@ async def handle_spam(message: Message):
 
     target = message.reply_to_message.from_user
     spam_text = message.reply_to_message.text.strip()
-    await append_message_to_csv(spam_text, 1)
+    await append_message_to_csv(spam_text, 1, 1)
 
     async with get_session() as session:
         user = await get_chat_user(session, target.id)

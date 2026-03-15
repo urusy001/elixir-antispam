@@ -72,8 +72,7 @@ async def start_captcha(bot: Bot, chat_id: int, user_id: int, thread_id: Optiona
         await send_ephemeral_message(bot, chat_id, "Для отправки сообщений в чат необходимо пройти простую проверку.\nОтветьте на вопрос ниже. Всего доступно три попытки.", thread_id=thread_id)
 
         kwargs = {}
-        if thread_id is not None:
-            kwargs["message_thread_id"] = thread_id
+        if thread_id is not None: kwargs["message_thread_id"] = thread_id
         poll_message = await bot.send_poll(chat_id=chat_id, question=question, options=options, type="quiz", correct_option_id=correct_option_id, is_anonymous=False, open_period=POLL_TIMEOUT_SECONDS, **kwargs)
 
         await update_chat_user(session, user_id, ChatUserUpdate(poll_active=True, poll_chat_id=chat_id, poll_message_id=poll_message.message_id, poll_id=poll_message.poll.id, poll_correct_option_id=correct_option_id))

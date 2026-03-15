@@ -105,7 +105,7 @@ async def handle_chat_message(message: Message):
         await safe_ban_user(message.bot, message.chat.id, user.id)
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
         await answer_ephemeral(message, "Вы были ограничены в правах за рекламу.")
-        return await append_message_to_csv(text, 1)
+        return await append_message_to_csv(text, 1, 1)
 
     if whitelist: return await append_message_to_csv(text, 0)
     if not passed_poll:
@@ -150,4 +150,4 @@ async def handle_chat_message(message: Message):
                         asyncio.create_task(pass_user(message.chat.id, user.id, message.bot, mute_delta.total_seconds()))
 
         await safe_delete_message(message.bot, message.chat.id, message.message_id)
-    return await append_message_to_csv(text, int(result))
+    return await append_message_to_csv(text, int(result), p)
