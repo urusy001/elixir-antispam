@@ -21,6 +21,15 @@ router = Router(name="admin")
 
 
 async def ADMIN_OR_PRIVATE_ADMIN_FILTER(message: Message, bot) -> bool:
+    if message.chat.id == ELIXIR_CHAT_ID:
+        if message.sender_chat and message.sender_chat.id == message.chat.id: return True
+        if not message.from_user: return False
+        try:
+            member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+            return member.status in ("administrator", "creator")
+        except Exception:
+            return False
+
     if message.chat.type != ChatType.PRIVATE or not message.from_user: return False
     try:
         member = await bot.get_chat_member(ELIXIR_CHAT_ID, message.from_user.id)

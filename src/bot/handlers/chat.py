@@ -9,7 +9,7 @@ from src.test_classifier import is_spam
 from src.database import get_session
 from src.database.blocked_links import get_blocked_links, extract_blocked_targets_from_text
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate, upsert_chat_user
-from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, extract_entity_domains, extract_message_text, apply_permanent_restriction
+from src.bot.handlers.chat_helpers import CHAT_USER_FILTER, far_future, is_permanently_banned, build_chat_user_create, extract_entity_domains, extract_message_text, apply_permanent_restriction, is_command_message
 from src.bot.handlers.chat_shared import send_ephemeral_message, answer_ephemeral, safe_ban_user, safe_delete_message
 from src.bot.handlers.chat_captcha import POLL_THREADS, start_captcha
 
@@ -63,7 +63,7 @@ async def handle_poll_answer(answer: PollAnswer, bot: Bot):
         return POLL_THREADS.pop(poll_id, None)
 
 
-@router.message(CHAT_USER_FILTER, lambda message: getattr(message, "message_thread_id", None) in [None, 27775])
+@router.message(CHAT_USER_FILTER, lambda message: getattr(message, "message_thread_id", None) in [None, 27775] and not is_command_message(message))
 async def handle_chat_message(message: Message):
     text = await extract_message_text(message)
     if not text: return None

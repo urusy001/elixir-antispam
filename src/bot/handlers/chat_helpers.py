@@ -18,6 +18,11 @@ def CHAT_USER_FILTER(obj) -> bool:
     return getattr(obj.chat, "id", 0) in [-1003182914098, ELIXIR_CHAT_ID]
 
 
+def is_command_message(message: Message) -> bool:
+    entities = list(message.entities or []) + list(message.caption_entities or [])
+    return any(entity.type == MessageEntityType.BOT_COMMAND and entity.offset == 0 for entity in entities)
+
+
 def far_future(now: datetime) -> datetime:
     return now + timedelta(days=PERMANENT_RESTRICTION_DAYS)
 
