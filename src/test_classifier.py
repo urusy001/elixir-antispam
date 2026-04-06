@@ -14,7 +14,7 @@ from sklearn.metrics import (
 )
 from transformers import AutoModel, AutoTokenizer
 
-from config import CLF_PATH, HF_SAVE_DIR, LOGS_DIR, MAX_LENGTH
+from config import CLF_PATH, HF_SAVE_DIR, LABELED_CSV_PATH, LOGS_DIR, MAX_LENGTH
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,6 +42,10 @@ threshold = 0.56 #97.99
 print(f"Using threshold: {threshold:.4f}")
 
 
+def probability_to_label(proba_spam: float) -> int:
+    return int(proba_spam > threshold)
+
+
 @torch.no_grad()
 def embed_one(text: str) -> np.ndarray:
     enc = tokenizer(
@@ -57,19 +61,28 @@ def embed_one(text: str) -> np.ndarray:
     return cls_emb.cpu().numpy()
 
 
-def is_spam_sync(text: str) -> tuple[bool, float]:
+def predict_spam_proba_sync(text: str) -> float:
     text = normalize_message(text)
     if not text:
-        return False, 0.0
+        return 0.0
 
     emb = embed_one(text)
-    proba_spam = float(clf.predict_proba(emb)[0, 1])
-    return proba_spam >= threshold, proba_spam
+    return float(clf.predict_proba(emb)[0, 1])
+
+
+async def predict_spam_proba(text: str) -> float:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, predict_spam_proba_sync, text)
+
+
+def is_spam_sync(text: str) -> tuple[bool, float]:
+    proba_spam = predict_spam_proba_sync(text)
+    return bool(probability_to_label(proba_spam)), proba_spam
 
 
 async def is_spam(text: str) -> tuple[bool, float]:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, is_spam_sync, text)
+    proba_spam = await predict_spam_proba(text)
+    return bool(probability_to_label(proba_spam)), proba_spam
 
 
 def print_metrics(y_true: np.ndarray, preds: np.ndarray) -> None:
@@ -116,12 +129,12 @@ def print_metrics(y_true: np.ndarray, preds: np.ndarray) -> None:
 
 
 def main() -> None:
-    path = Path(LOGS_DIR) / "messages.csv"
+    path = LABELED_CSV_PATH
     print(f"[INFO] Loading test data from: {path}")
 
     df = pd.read_csv(path, engine="python", on_bad_lines="skip")
     if "Message" not in df.columns or "Label" not in df.columns:
-        raise ValueError("messages.csv must contain columns 'Message' and 'Label'")
+        raise ValueError("Labeled dataset must contain columns 'Message' and 'Label'")
 
     label_map = {
         "ham": 0,

@@ -11,8 +11,8 @@ from config import MOSCOW_TZ, ELIXIR_CHAT_ID
 from src.bot.handlers.chat_shared import answer_ephemeral, safe_unrestrict, safe_restrict, pass_user
 from src.bot.permissions import NEW_USER
 from src.image import extract_text_from_image
-from src.test_classifier import is_spam
-from src.helpers import _notify_user, append_message_to_csv
+from src.test_classifier import predict_spam_proba, probability_to_label
+from src.helpers import _notify_user
 from src.database import get_session
 from src.database.chat_user import update_chat_user, get_chat_user, ChatUserUpdate
 from src.database.blocked_links import add_blocked_link, remove_blocked_link, get_blocked_links, normalize_blocked_link
@@ -89,7 +89,6 @@ async def handle_spam(message: Message):
 
     target = message.reply_to_message.from_user
     spam_text = message.reply_to_message.text.strip()
-    await append_message_to_csv(spam_text, 1, 1)
 
     async with get_session() as session:
         user = await get_chat_user(session, target.id)
@@ -162,7 +161,8 @@ async def handle_unmute(message: Message):
     if not user_id: return await answer_ephemeral(message, "Либо укажите user_id пользователя, либо ответьте командой на его сообщение\n\n<i>Напишите @ShostakovIV в ТГ, если не знаете как получить user_id</i>")
 
     ok = await safe_unrestrict(message.bot, message.chat.id, user_id)
-    async with get_session() as session: await update_chat_user(session, user_id, ChatUserUpdate(muted_until=None, banned_until=None))
+    async with get_session() as session:
+        await update_chat_user(session, user_id, ChatUserUpdate(muted_until=None, banned_until=None, passed_poll=True, poll_attempts=0, poll_active=False, poll_message_id=None, poll_chat_id=None, poll_id=None, poll_correct_option_id=None))
     return await answer_ephemeral(message, "Пользователю успешно возвращены права" if ok else "Не удалось вернуть права: пользователь не найден или уже покинул чат")
 
 
@@ -184,7 +184,8 @@ async def handle_private(message: Message):
 
     if not text: return await message.answer("Нужен текст")
 
-    is_spam_flag, prob = await is_spam(text.strip())
+    prob = await predict_spam_proba(text.strip())
+    is_spam_flag = bool(probability_to_label(prob))
     percent = f"{prob * 100:.2f}%"   # например, 12.34%
     verdict = "Спам" if is_spam_flag else "Не спам"
     return await message.reply(f"{verdict}: {percent}")

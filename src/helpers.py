@@ -2,21 +2,73 @@ import asyncio
 import csv
 
 from logging import Logger
+from pathlib import Path
+from typing import Optional
 from aiogram import Bot
 from aiogram.enums import ChatMemberStatus
 from aiogram.types import Message
 
-from config import CSV_PATH, ELIXIR_CHAT_ID
+from config import ELIXIR_CHAT_ID, LABELED_CSV_PATH, STATS_CSV_PATH
+
+STATS_CSV_HEADER = ["Message", "PredictedProba", "TrueLabel"]
+LEGACY_LABELED_CSV_HEADER = ["Message", "Label"]
 
 _csv_lock = asyncio.Lock()
-async def append_message_to_csv(text: str, label: int | float) -> None:
-    text = text.replace("\r\n", "\n").replace("\r", "\n")  # чуть-чуть нормализуем
+
+
+def normalize_message_for_stats(text: str) -> str:
+    return " ".join(str(text).strip().split())
+
+
+def _read_csv_header(path: Path) -> Optional[list[str]]:
+    if not path.exists():
+        return None
+
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.reader(f)
+        try:
+            return next(reader)
+        except StopIteration:
+            return []
+
+
+def _write_stats_csv_header() -> None:
+    STATS_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with STATS_CSV_PATH.open("w", encoding="utf-8", newline="") as f:
+        csv.writer(f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL).writerow(STATS_CSV_HEADER)
+
+
+def ensure_stats_csv_ready() -> None:
+    STATS_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    stats_header = _read_csv_header(STATS_CSV_PATH)
+
+    if stats_header == LEGACY_LABELED_CSV_HEADER:
+        if LABELED_CSV_PATH.exists():
+            raise RuntimeError(
+                f"Cannot archive legacy dataset: {LABELED_CSV_PATH} already exists while "
+                f"{STATS_CSV_PATH} is still using the old labeled schema."
+            )
+        STATS_CSV_PATH.replace(LABELED_CSV_PATH)
+        stats_header = None
+
+    if stats_header is None or stats_header == []:
+        _write_stats_csv_header()
+        return
+
+    if stats_header != STATS_CSV_HEADER:
+        raise RuntimeError(
+            f"Unexpected stats CSV header in {STATS_CSV_PATH}: {stats_header!r}. "
+            f"Expected {STATS_CSV_HEADER!r}."
+        )
+
+
+async def append_message_stats_to_csv(text: str, predicted_proba: float, true_label: Optional[int] = None) -> None:
+    text = normalize_message_for_stats(text)
     async with _csv_lock:
-        file_exists = CSV_PATH.exists()
-        with CSV_PATH.open("a", encoding="utf-8", newline="") as f:
+        ensure_stats_csv_ready()
+        with STATS_CSV_PATH.open("a", encoding="utf-8", newline="") as f:
             writer = csv.writer(f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            if not file_exists: writer.writerow(["Message", "Label"])
-            writer.writerow([text, label])
+            writer.writerow([text, predicted_proba, "" if true_label is None else int(true_label)])
 
 async def _notify_user(message: Message, text: str, timer: float | None = None, logger: Logger = None) -> None:
     if logger: logger.info("Notify user %s | text_preview=%r | timer=%s", message.from_user.id, text[:100], timer)

@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from sklearn.model_selection import train_test_split
 from transformers import AutoModel, AutoTokenizer
 
-from config import HF_SAVE_DIR, CLF_PATH, MAX_LENGTH, MODEL_NAME, MISSES_PATH, CSV_PATH
+from config import HF_SAVE_DIR, CLF_PATH, MAX_LENGTH, MODEL_NAME, MISSES_PATH, LABELED_CSV_PATH
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -174,7 +174,7 @@ def choose_best_threshold(
 
 
 print("Loading data...")
-df = pd.read_csv(CSV_PATH, engine="python", on_bad_lines="skip")
+df = pd.read_csv(LABELED_CSV_PATH, engine="python", on_bad_lines="skip")
 
 label_map = {
     "ham": 0,
